@@ -1,0 +1,82 @@
+import numpy as np
+from scipy.special import comb
+import math
+from math import factorial
+
+def AU(Lambda, n, m, k, t):
+    alpha = []
+    u = []
+    for i in range(1, k+1):
+        if i == k:
+            alpha_i = Lambda**i
+            alpha.append(alpha_i)
+        else:
+            alpha_i = (Lambda**i) * ((-1)**(k-i)) * math.prod((n+m)-(q+1) for q in range(i, k)) / math.factorial(k-i)
+            alpha.append(alpha_i)
+        u_i = (t**(i-1)) / math.factorial(i-1)
+        u.append(u_i)
+    A = np.array(alpha)
+    U = np.array(u).T
+    return A, U
+
+def BV(Lambda, n, m, k, t):
+    beta = []
+    v = []
+    for j in range(1, n+m-k+1):
+        if j == n+m-k:
+            beta_j = ((-1)**k) * (Lambda**j)
+            beta.append(beta_j)
+        else:
+            beta_j = (Lambda**j) * ((-1)**k) * math.prod((n+m)-(r+1) for r in range(j, n+m-k)) / math.factorial(n+m-k-j)
+            beta.append(beta_j)
+        v_j = (t**(j-1)) / math.factorial(j-1)
+        v.append(v_j)
+    B = np.array(beta)
+    V = np.array(v).T
+    return B, V
+
+def dpdt(Lambda, n, m, t):
+    n_list = []
+    for k in range(1, n+1):
+        A, U = AU(Lambda, n, m, k, t)
+        B, V = BV(Lambda, n, m, k, t)
+        binom1 = comb(n+m-k-1, m-1, exact=True)
+        sum_n = binom1 * ( A@U * np.exp(-Lambda*t) + B@V * np.exp(-2*Lambda*t) )
+        n_list.append(sum_n)
+    m_list = []
+    for k in range(1, m+1):
+        A, U = AU(Lambda, n, m, k, t)
+        B, V = BV(Lambda, n, m, k, t)
+        binom2 = comb(n+m-k-1, n-1, exact=True)
+        sum_m = binom2 * ( A@U * np.exp(-Lambda*t) + B@V * np.exp(-2*Lambda*t) )
+        m_list.append(sum_m)
+    dpdt = sum(n_list) + sum(m_list)
+    return dpdt
+
+def numerical_integration(Lambda, n, m, t):
+    N = 10000
+    t_0 = 0
+    t_n = t
+    h = (t_n - t_0) / N
+    p = (h/2) * (dpdt(Lambda, n, m, t_0) + 2*sum(dpdt(Lambda, n, m, h*i) for i in range(1,N-1)) + dpdt(Lambda, n, m, t_n))
+    return p
+
+def pt(Lambda, n_or_m, t):
+    p = 1 - sum(((Lambda*t)**k) * np.exp(-Lambda*t) / math.factorial(k) for k in range(0, n_or_m))
+    return p
+
+Lambda = 1
+p_list = []
+t_list = []
+t = 0
+while t < 40:
+    t_list.append(t)
+    p = numerical_integration(Lambda, 15, 5, t)
+    p_list.append(p)
+    t += (-np.log(1-np.random.rand())*(1/Lambda))
+
+plt.figure(figsize=(5,5))
+plt.plot(t_list, p_list)
+plt.xlabel('t')
+plt.ylabel('p(t)')
+plt.show()
